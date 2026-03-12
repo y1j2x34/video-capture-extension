@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Minimal Video Recorder",
+  "version": "1.0.0",
+  "description": "Record HTML5 video elements with captureStream and download the result.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

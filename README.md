@@ -1,0 +1,104 @@
+# Minimal Video Recorder
+
+Minimal Video Recorder is a lightweight Chrome extension that adds a small **Record** button to HTML5 video players on web pages. When you click the button, the extension waits for the video to start playing, records the video stream directly in the browser, and downloads the recorded file automatically when the recording finishes.
+
+## Before You Start
+
+Please note the following:
+
+- This extension works with normal HTML5 `<video>` elements
+- Some websites use protected video systems such as DRM, and those videos cannot be captured
+- Some custom players may block stream capture or behave differently
+- The current version saves recordings as `.webm`
+
+## How to Download
+
+Once this project is uploaded to GitHub, you can download it in either of these ways.
+
+### Option 1: Download ZIP from GitHub
+
+1. Open the GitHub project page in your browser.
+2. Click the green `Code` button.
+3. Click `Download ZIP`.
+4. After the download finishes, extract the ZIP file to a folder on your computer.
+5. Remember the location of that folder. You will need it during installation.
+
+### Option 2: Download from a Release
+
+If the project later provides GitHub Releases:
+
+1. Open the `Releases` section on GitHub.
+2. Download the latest release source ZIP or packaged files.
+3. Extract the downloaded file to a folder on your computer.
+
+## How to Install in Chrome
+
+This extension is installed as an unpacked extension.
+
+1. Open Chrome.
+2. Type `chrome://extensions` in the address bar and press Enter.
+3. Turn on `Developer mode` using the switch in the top-right corner.
+4. Click `Load unpacked`.
+5. Select the folder that contains this extension's files.
+   The folder should include files such as `manifest.json`, `content.js`, and `content.css`.
+6. Chrome will load the extension immediately.
+
+If the extension is loaded correctly, it will appear in your extensions list as `Minimal Video Recorder`.
+
+## How to Use
+
+1. Open a page that contains a normal HTML5 video.
+2. Wait until the page finishes loading.
+3. Look at the top-right corner of the video player.
+4. You should see a small `Record` button.
+5. Click `Record`.
+6. If the video is not playing yet, the button changes to `Waiting`.
+7. Start playing the video.
+8. When playback begins, the extension starts recording automatically.
+9. While recording is active, the button changes to `Stop`.
+10. When the video ends, the browser automatically downloads the recorded file.
+
+## How to Stop Recording Early
+
+If you do not want to wait until the video ends:
+
+1. Click the `Stop` button while the recording is in progress.
+2. The extension will stop recording.
+3. The browser will immediately download the recorded video.
+
+## Where the Downloaded File Goes
+
+The recording is downloaded using your browser's normal download system.
+
+- In most cases, the file goes to your default `Downloads` folder
+- If Chrome is configured to ask where to save files, Chrome may ask you to choose a location
+- The filename is generated automatically from the page title and the current time
+
+## If You Do Not See the Record Button
+
+Try these steps:
+
+1. Refresh the page once after installing the extension.
+2. Make sure the page uses a real HTML5 video element.
+3. Make sure the video is visible on screen.
+4. Try another website with a standard video player.
+5. Check whether the site uses protected or encrypted media.
+
+## If Recording Does Not Work
+
+Possible reasons include:
+
+- The website blocks `captureStream()`
+- The video is protected by DRM
+- The player is not using a standard HTML5 video element
+- Your browser does not allow recording for that specific player
+
+If the button briefly shows `Unsupported`, the page or browser does not support recording for that video.
+
+## Privacy
+
+This extension records video directly inside your browser from the page you are viewing. It does not upload the recording to a remote server.
+
+## Browser Support
+
+This project is intended for Chrome and Chromium-based browsers that support video stream capture and recording APIs.
