@@ -43,6 +43,10 @@
   background: rgba(185, 28, 28, 0.94);
 }
 
+.mvr-record-button[data-state="downloading"] {
+  background: rgba(5, 150, 105, 0.94);
+}
+
 .mvr-record-button:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;

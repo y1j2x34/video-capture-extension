@@ -3,6 +3,15 @@
   const PANEL_GAP = 8;
   const MIN_VIDEO_WIDTH = 160;
   const MIN_VIDEO_HEIGHT = 90;
+  const DIRECT_DOWNLOAD_EXTENSIONS = new Set([
+    ".mp4",
+    ".webm",
+    ".ogg",
+    ".ogv",
+    ".mov",
+    ".m4v",
+    ".mkv"
+  ]);
   const FORMAT_CATALOG = [
     {
       format: "webm",
@@ -124,6 +133,105 @@
     return `${normalizedBase}.${format}`;
   }
 
+  function getVideoSourceUrl(video) {
+    const sourceElement = video.querySelector("source[src]");
+    return video.currentSrc || video.src || sourceElement?.src || "";
+  }
+
+  function getPathExtension(pathname) {
+    const match = pathname.toLowerCase().match(/\.[a-z0-9]{2,5}$/);
+    return match ? match[0] : "";
+  }
+
+  function isDirectDownloadableUrl(value) {
+    if (!value) {
+      return false;
+    }
+
+    try {
+      const url = new URL(value, window.location.href);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return false;
+      }
+
+      return DIRECT_DOWNLOAD_EXTENSIONS.has(getPathExtension(url.pathname));
+    } catch {
+      return false;
+    }
+  }
+
+  function createDirectDownloadFilename(urlValue) {
+    try {
+      const url = new URL(urlValue, window.location.href);
+      const pathname = decodeURIComponent(url.pathname);
+      const rawName = pathname.split("/").pop() || "";
+      const extension = getPathExtension(rawName);
+      const baseName = sanitizeFilenameBase(rawName.replace(/\.[a-z0-9]{2,5}$/i, ""));
+
+      if (baseName && extension) {
+        return `${baseName}${extension}`;
+      }
+    } catch {
+      // Fall back to the default generated name below.
+    }
+
+    return `${createDefaultFilenameBase()}.mp4`;
+  }
+
+  function requestDirectDownload(url, filename) {
+    return new Promise((resolve, reject) => {
+      if (!chrome?.runtime?.sendMessage) {
+        reject(new Error("Downloads API is unavailable."));
+        return;
+      }
+
+      chrome.runtime.sendMessage(
+        {
+          type: "mvr-download-url",
+          url,
+          filename
+        },
+        (response) => {
+          const runtimeError = chrome.runtime.lastError;
+
+          if (runtimeError) {
+            reject(new Error(runtimeError.message || "Download request failed."));
+            return;
+          }
+
+          if (!response?.ok) {
+            reject(new Error(response?.error || "Download request failed."));
+            return;
+          }
+
+          resolve(response);
+        }
+      );
+    });
+  }
+
+  async function tryDirectDownload(state) {
+    const sourceUrl = getVideoSourceUrl(state.video);
+
+    if (!isDirectDownloadableUrl(sourceUrl)) {
+      return false;
+    }
+
+    state.status = "downloading";
+    state.pendingStart = false;
+    state.downloadInFlight = true;
+    updateButtonState(state);
+
+    try {
+      await requestDirectDownload(sourceUrl, createDirectDownloadFilename(sourceUrl));
+      window.setTimeout(() => resetState(state), 1200);
+      return true;
+    } catch {
+      resetState(state);
+      return false;
+    }
+  }
+
   function isVideoVisible(video) {
     const rect = video.getBoundingClientRect();
     const style = window.getComputedStyle(video);
@@ -165,6 +273,12 @@
     if (status === "unsupported") {
       button.textContent = "Unsupported";
       button.title = "Recording is not available for this video";
+      return;
+    }
+
+    if (status === "downloading") {
+      button.textContent = "Downloading";
+      button.title = "Downloading the video file directly";
       return;
     }
 
@@ -217,6 +331,7 @@
     state.stream = null;
     state.recorder = null;
     state.mimeType = "";
+    state.downloadInFlight = false;
     hidePanel(state);
     updateButtonState(state);
     scheduleRefresh();
@@ -547,9 +662,13 @@
     document.documentElement.appendChild(panel);
   }
 
-  function handleButtonClick(state) {
+  async function handleButtonClick(state) {
     if (state.status === "recording") {
       stopRecording(state);
+      return;
+    }
+
+    if (state.status === "downloading" || state.downloadInFlight) {
       return;
     }
 
@@ -568,6 +687,10 @@
         closePanel(currentState);
       }
     });
+
+    if (await tryDirectDownload(state)) {
+      return;
+    }
 
     showPanel(state);
   }
@@ -593,7 +716,8 @@
       selectedFormat: getFirstSupportedFormat().format,
       filenameBase: createDefaultFilenameBase(),
       downloadFilename: "",
-      mimeType: ""
+      mimeType: "",
+      downloadInFlight: false
     };
 
     createPanel(state);
@@ -603,7 +727,7 @@
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      handleButtonClick(state);
+      void handleButtonClick(state);
     });
 
     video.addEventListener("playing", onVideoPlaying);
