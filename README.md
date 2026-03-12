@@ -1,6 +1,6 @@
 # Minimal Video Recorder
 
-Minimal Video Recorder is a lightweight Chrome extension that adds a small **Record** button to HTML5 video players on web pages. When you click the button, the extension waits for the video to start playing, records the video stream directly in the browser, and downloads the recorded file automatically when the recording finishes.
+Minimal Video Recorder is a lightweight Chrome extension that adds a small **Record** button to HTML5 video players on web pages. When you click the button, a small floating settings panel opens so you can choose the recording format and the download file name before recording starts. The extension then waits for the video to start playing, records the video stream directly in the browser, and downloads the recorded file automatically when the recording finishes.
 
 ## Before You Start
 
@@ -9,7 +9,9 @@ Please note the following:
 - This extension works with normal HTML5 `<video>` elements
 - Some websites use protected video systems such as DRM, and those videos cannot be captured
 - Some custom players may block stream capture or behave differently
-- The current version saves recordings as `.webm`
+- The settings panel lists multiple candidate video formats
+- Format availability is detected automatically in your browser
+- Only formats supported by your current browser can be selected
 
 ## How to Download
 
@@ -52,11 +54,28 @@ If the extension is loaded correctly, it will appear in your extensions list as 
 3. Look at the top-right corner of the video player.
 4. You should see a small `Record` button.
 5. Click `Record`.
-6. If the video is not playing yet, the button changes to `Waiting`.
-7. Start playing the video.
-8. When playback begins, the extension starts recording automatically.
-9. While recording is active, the button changes to `Stop`.
-10. When the video ends, the browser automatically downloads the recorded file.
+6. A small floating settings panel will open.
+7. Choose one of the available formats in the settings panel.
+8. Enter the file name you want to use.
+9. Click `Start`.
+10. If the video is not playing yet, the button changes to `Waiting`.
+11. Start playing the video.
+12. When playback begins, the extension starts recording automatically.
+13. While recording is active, the button changes to `Stop`.
+14. When the video ends, the browser automatically downloads the recorded file.
+
+## Recording Settings Panel
+
+Before recording starts, the extension opens a small settings panel.
+
+- The panel lists all candidate formats supported by this extension
+- Each format is checked in your browser automatically
+- Supported formats are shown as available and can be selected
+- Unsupported formats stay visible but are disabled
+- You only need to type the file name itself
+- The extension adds the correct file extension automatically
+
+For example, if you enter `My Clip`, the downloaded file will be saved with the extension that matches the format you selected.
 
 ## How to Stop Recording Early
 
@@ -72,7 +91,8 @@ The recording is downloaded using your browser's normal download system.
 
 - In most cases, the file goes to your default `Downloads` folder
 - If Chrome is configured to ask where to save files, Chrome may ask you to choose a location
-- The filename is generated automatically from the page title and the current time
+- If you enter your own file name in the settings panel, that name will be used
+- If you leave the file name empty, the extension creates a default name automatically
 
 ## If You Do Not See the Record Button
 
@@ -94,6 +114,8 @@ Possible reasons include:
 - Your browser does not allow recording for that specific player
 
 If the button briefly shows `Unsupported`, the page or browser does not support recording for that video.
+
+If a format such as `mp4`, `ogg`, or `mkv` cannot be selected, it means your current browser does not report support for that format through the recording API used by this extension.
 
 ## Privacy
 

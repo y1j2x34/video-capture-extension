@@ -1,39 +1,127 @@
 (() => {
   const BUTTON_MARGIN = 12;
+  const PANEL_GAP = 8;
   const MIN_VIDEO_WIDTH = 160;
   const MIN_VIDEO_HEIGHT = 90;
+  const FORMAT_CATALOG = [
+    {
+      format: "webm",
+      label: "WebM",
+      candidates: [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm"
+      ]
+    },
+    {
+      format: "mp4",
+      label: "MP4",
+      candidates: [
+        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+        "video/mp4;codecs=avc1,mp4a.40.2",
+        "video/mp4;codecs=h264,mp4a.40.2",
+        "video/mp4"
+      ]
+    },
+    {
+      format: "ogg",
+      label: "Ogg",
+      candidates: [
+        "video/ogg;codecs=theora,opus",
+        "video/ogg;codecs=theora",
+        "video/ogg"
+      ]
+    },
+    {
+      format: "mkv",
+      label: "Matroska",
+      candidates: [
+        "video/x-matroska;codecs=vp9,opus",
+        "video/x-matroska;codecs=avc1,opus",
+        "video/x-matroska"
+      ]
+    }
+  ];
   const videoStates = new WeakMap();
   const states = new Set();
+  const formatSupport = detectFormatSupport();
   let refreshScheduled = false;
 
-  function getSupportedMimeType() {
-    const candidates = [
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm;codecs=vp9",
-      "video/webm;codecs=vp8",
-      "video/webm"
-    ];
+  function detectFormatSupport() {
+    return FORMAT_CATALOG.map((entry) => {
+      const supportedMimeType =
+        typeof MediaRecorder === "undefined"
+          ? ""
+          : entry.candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 
-    if (typeof MediaRecorder === "undefined") {
+      return {
+        ...entry,
+        supportedMimeType,
+        isSupported: Boolean(supportedMimeType)
+      };
+    });
+  }
+
+  function getSupportedFormat(format) {
+    return formatSupport.find((entry) => entry.format === format) || null;
+  }
+
+  function getFirstSupportedFormat() {
+    return formatSupport.find((entry) => entry.isSupported) || formatSupport[0];
+  }
+
+  function getSupportedMimeType(format) {
+    const supportedFormat = getSupportedFormat(format);
+
+    if (!supportedFormat) {
       return "";
     }
 
-    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+    return supportedFormat.supportedMimeType;
   }
 
-  function sanitizeFilenamePart(value) {
-    return (value || "video")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 48) || "video";
+  function getFormatLabel(format) {
+    const supportedFormat = getSupportedFormat(format);
+
+    if (!supportedFormat) {
+      return format.toUpperCase();
+    }
+
+    return supportedFormat.label;
   }
 
-  function createFilename() {
-    const title = sanitizeFilenamePart(document.title);
+  function getFormatStatusLabel(entry) {
+    if (typeof MediaRecorder === "undefined") {
+      return "Unavailable";
+    }
+
+    if (entry.isSupported) {
+      return "Available";
+    }
+
+    return "Not available";
+  }
+
+  function sanitizeFilenameBase(value) {
+    return (value || "")
+      .replace(/\.[a-z0-9]{2,5}$/i, "")
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+  }
+
+  function createDefaultFilenameBase() {
+    const title = sanitizeFilenameBase(document.title) || "Recorded Video";
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    return `${title}-${timestamp}.webm`;
+    return `${title} ${timestamp}`;
+  }
+
+  function createDownloadFilename(baseName, format) {
+    const normalizedBase = sanitizeFilenameBase(baseName) || createDefaultFilenameBase();
+    return `${normalizedBase}.${format}`;
   }
 
   function isVideoVisible(video) {
@@ -58,7 +146,13 @@
 
     if (status === "idle") {
       button.textContent = "Record";
-      button.title = "Record this video";
+      button.title = "Open recording settings";
+      return;
+    }
+
+    if (status === "panel") {
+      button.textContent = "Close";
+      button.title = "Close recording settings";
       return;
     }
 
@@ -78,13 +172,52 @@
     button.title = "Stop recording and download";
   }
 
+  function updateFilenamePreview(state) {
+    state.downloadFilename = createDownloadFilename(state.filenameBase, state.selectedFormat);
+
+    if (state.filenameInput) {
+      const normalizedBase = sanitizeFilenameBase(state.filenameInput.value);
+      if (normalizedBase !== state.filenameInput.value.trim()) {
+        state.filenameInput.value = normalizedBase || "";
+      }
+    }
+
+    if (state.filenamePreview) {
+      state.filenamePreview.textContent = `Download as ${state.downloadFilename}`;
+    }
+  }
+
+  function hidePanel(state) {
+    state.isPanelOpen = false;
+    state.panel.classList.remove("is-visible");
+  }
+
+  function showPanel(state) {
+    state.status = "panel";
+    state.isPanelOpen = true;
+    state.filenameInput.value = state.filenameBase;
+    const selectedFormatInput = state.panel.querySelector(
+      `input[name="${state.formatInputName}"][value="${state.selectedFormat}"]`
+    );
+    if (selectedFormatInput) {
+      selectedFormatInput.checked = true;
+    }
+    updateButtonState(state);
+    updateFilenamePreview(state);
+    state.panel.classList.add("is-visible");
+    scheduleRefresh();
+    window.setTimeout(() => state.filenameInput.focus(), 0);
+  }
+
   function resetState(state) {
     state.status = "idle";
     state.pendingStart = false;
+    state.isPanelOpen = false;
     state.chunks = [];
     state.stream = null;
     state.recorder = null;
-    state.mimeType = "video/webm";
+    state.mimeType = "";
+    hidePanel(state);
     updateButtonState(state);
     scheduleRefresh();
   }
@@ -97,11 +230,11 @@
     stream.getTracks().forEach((track) => track.stop());
   }
 
-  function triggerDownload(blob) {
+  function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = createFilename();
+    anchor.download = filename;
     anchor.style.display = "none";
     document.documentElement.appendChild(anchor);
     anchor.click();
@@ -126,40 +259,38 @@
   function finishRecording(state) {
     const mimeType = state.mimeType || "video/webm";
     const blob = new Blob(state.chunks, { type: mimeType });
+    const downloadFilename = state.downloadFilename;
 
     cleanupStream(state.stream);
 
     if (blob.size > 0) {
-      triggerDownload(blob);
+      triggerDownload(blob, downloadFilename);
     }
 
     resetState(state);
   }
 
   function startRecording(state) {
-    if (state.status !== "armed" && state.status !== "recording") {
-      return;
-    }
-
-    if (state.status === "recording") {
+    if (state.status !== "armed") {
       return;
     }
 
     const video = state.video;
-    const captureStream =
-      video.captureStream || video.mozCaptureStream || null;
+    const captureStream = video.captureStream || video.mozCaptureStream || null;
 
     if (!captureStream) {
       state.status = "unsupported";
+      hidePanel(state);
       updateButtonState(state);
       window.setTimeout(() => resetState(state), 1800);
       return;
     }
 
-    const mimeType = getSupportedMimeType();
+    const mimeType = getSupportedMimeType(state.selectedFormat);
 
     if (!mimeType) {
       state.status = "unsupported";
+      hidePanel(state);
       updateButtonState(state);
       window.setTimeout(() => resetState(state), 1800);
       return;
@@ -172,6 +303,7 @@
       state.recorder = new MediaRecorder(state.stream, { mimeType });
       state.status = "recording";
       state.pendingStart = false;
+      hidePanel(state);
       updateButtonState(state);
 
       state.recorder.addEventListener("dataavailable", (event) => {
@@ -210,13 +342,17 @@
       return;
     }
 
-    if (state.status === "armed") {
-      resetState(state);
-      return;
-    }
+    const checkedFormat = state.panel.querySelector(
+      `input[name="${state.formatInputName}"]:checked`
+    );
+    const defaultFormat = getFirstSupportedFormat();
+    state.selectedFormat = checkedFormat ? checkedFormat.value : defaultFormat.format;
+    state.filenameBase = sanitizeFilenameBase(state.filenameInput.value) || createDefaultFilenameBase();
+    updateFilenamePreview(state);
 
     state.status = "armed";
     state.pendingStart = true;
+    hidePanel(state);
     updateButtonState(state);
 
     if (!state.video.paused && !state.video.ended && state.video.readyState > 2) {
@@ -229,6 +365,7 @@
 
     if (!document.contains(video) || !isVideoVisible(video)) {
       button.classList.remove("is-visible");
+      state.panel.classList.remove("is-visible");
       return;
     }
 
@@ -241,6 +378,39 @@
     button.classList.add("is-visible");
   }
 
+  function updatePanelPosition(state) {
+    const { panel, button, video } = state;
+
+    if (!state.isPanelOpen || !document.contains(video) || !isVideoVisible(video)) {
+      panel.classList.remove("is-visible");
+      return;
+    }
+
+    const buttonRect = button.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    const panelWidth = panel.offsetWidth || 240;
+    const panelHeight = panel.offsetHeight || 170;
+    const maxLeft = window.innerWidth - panelWidth - BUTTON_MARGIN;
+    const maxTop = window.innerHeight - panelHeight - BUTTON_MARGIN;
+    const alignedRight = buttonRect.right - panelWidth;
+    const belowButton = buttonRect.bottom + PANEL_GAP;
+    const fallbackAbove = buttonRect.top - panelHeight - PANEL_GAP;
+    const left = Math.min(Math.max(BUTTON_MARGIN, alignedRight), Math.max(BUTTON_MARGIN, maxLeft));
+    const preferredTop = belowButton <= maxTop ? belowButton : fallbackAbove;
+    const top = Math.min(
+      Math.max(BUTTON_MARGIN, preferredTop),
+      Math.max(BUTTON_MARGIN, maxTop)
+    );
+
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.classList.add("is-visible");
+
+    if (videoRect.bottom < 0 || videoRect.top > window.innerHeight) {
+      panel.classList.remove("is-visible");
+    }
+  }
+
   function scheduleRefresh() {
     if (refreshScheduled) {
       return;
@@ -250,8 +420,16 @@
 
     window.requestAnimationFrame(() => {
       refreshScheduled = false;
-      refreshAllButtons();
+      refreshAllOverlays();
     });
+  }
+
+  function closePanel(state) {
+    if (!state.isPanelOpen) {
+      return;
+    }
+
+    resetState(state);
   }
 
   function onVideoPlaying(event) {
@@ -270,11 +448,128 @@
     }
   }
 
-  function onVideoPause(event) {
-    const state = videoStates.get(event.currentTarget);
-    if (state && state.status === "armed" && event.currentTarget.ended) {
-      resetState(state);
+  function onFormatChange(event) {
+    const state = statesForElement(event.currentTarget);
+    if (!state) {
+      return;
     }
+
+    state.selectedFormat = event.currentTarget.value;
+    updateFilenamePreview(state);
+  }
+
+  function onFilenameInput(event) {
+    const state = statesForElement(event.currentTarget);
+    if (!state) {
+      return;
+    }
+
+    state.filenameBase = event.currentTarget.value;
+    updateFilenamePreview(state);
+  }
+
+  function statesForElement(element) {
+    let current = element;
+
+    while (current && current !== document.documentElement) {
+      if (current.dataset && current.dataset.mvrStateId) {
+        return Array.from(states).find((state) => state.id === current.dataset.mvrStateId) || null;
+      }
+
+      current = current.parentElement;
+    }
+
+    return null;
+  }
+
+  function createPanel(state) {
+    const panel = document.createElement("div");
+    const stateId = `mvr-${Math.random().toString(36).slice(2, 10)}`;
+    const formatInputName = `${stateId}-format`;
+    const formatOptionsMarkup = formatSupport
+      .map((entry) => {
+        const disabledClass = entry.isSupported ? "" : " is-disabled";
+        const disabledAttr = entry.isSupported ? "" : " disabled";
+        const checkedAttr = entry.format === state.selectedFormat ? " checked" : "";
+
+        return `
+          <label class="mvr-format-option${disabledClass}">
+            <input type="radio" name="${formatInputName}" value="${entry.format}"${checkedAttr}${disabledAttr} />
+            <span>${entry.label}</span>
+            <span class="mvr-format-hint">${getFormatStatusLabel(entry)}</span>
+          </label>
+        `;
+      })
+      .join("");
+
+    panel.className = "mvr-settings-panel";
+    panel.dataset.mvrStateId = stateId;
+    panel.innerHTML = `
+      <div class="mvr-panel-title">Recording settings</div>
+      <div class="mvr-panel-section">
+        <span class="mvr-panel-label">Format</span>
+        ${formatOptionsMarkup}
+      </div>
+      <label class="mvr-panel-section">
+        <span class="mvr-panel-label">File name</span>
+        <input class="mvr-filename-input" type="text" maxlength="80" placeholder="Recorded Video" />
+      </label>
+      <div class="mvr-panel-preview" aria-live="polite"></div>
+      <div class="mvr-panel-actions">
+        <button type="button" class="mvr-panel-button mvr-panel-button-primary">Start</button>
+        <button type="button" class="mvr-panel-button">Cancel</button>
+      </div>
+    `;
+
+    state.id = stateId;
+    state.formatInputName = formatInputName;
+    state.panel = panel;
+    state.filenameInput = panel.querySelector(".mvr-filename-input");
+    state.filenamePreview = panel.querySelector(".mvr-panel-preview");
+
+    panel.querySelectorAll(`input[name="${formatInputName}"]`).forEach((input) => {
+      input.addEventListener("change", onFormatChange);
+    });
+    state.filenameInput.addEventListener("input", onFilenameInput);
+    state.filenameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        armRecording(state);
+      }
+    });
+    panel.querySelector(".mvr-panel-button-primary").addEventListener("click", () => {
+      armRecording(state);
+    });
+    panel.querySelector(".mvr-panel-button:last-child").addEventListener("click", () => {
+      closePanel(state);
+    });
+
+    document.documentElement.appendChild(panel);
+  }
+
+  function handleButtonClick(state) {
+    if (state.status === "recording") {
+      stopRecording(state);
+      return;
+    }
+
+    if (state.status === "armed") {
+      resetState(state);
+      return;
+    }
+
+    if (state.isPanelOpen) {
+      closePanel(state);
+      return;
+    }
+
+    states.forEach((currentState) => {
+      if (currentState !== state && currentState.isPanelOpen) {
+        closePanel(currentState);
+      }
+    });
+
+    showPanel(state);
   }
 
   function createState(video) {
@@ -283,32 +578,42 @@
     button.className = "mvr-record-button";
 
     const state = {
+      id: "",
       video,
       button,
+      panel: null,
+      filenameInput: null,
+      filenamePreview: null,
       status: "idle",
       pendingStart: false,
+      isPanelOpen: false,
       recorder: null,
       stream: null,
       chunks: [],
-      mimeType: "video/webm"
+      selectedFormat: getFirstSupportedFormat().format,
+      filenameBase: createDefaultFilenameBase(),
+      downloadFilename: "",
+      mimeType: ""
     };
 
+    createPanel(state);
+    updateFilenamePreview(state);
     updateButtonState(state);
 
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      armRecording(state);
+      handleButtonClick(state);
     });
 
     video.addEventListener("playing", onVideoPlaying);
     video.addEventListener("ended", onVideoEnded);
-    video.addEventListener("pause", onVideoPause);
 
     document.documentElement.appendChild(button);
     videoStates.set(video, state);
     states.add(state);
     updateButtonPosition(state);
+    updatePanelPosition(state);
   }
 
   function scanVideos(root = document) {
@@ -325,16 +630,20 @@
   }
 
   function disposeState(state) {
-    stopRecording(state);
-    cleanupStream(state.stream);
+    if (state.status === "recording") {
+      stopRecording(state);
+    } else {
+      cleanupStream(state.stream);
+    }
+
     state.video.removeEventListener("playing", onVideoPlaying);
     state.video.removeEventListener("ended", onVideoEnded);
-    state.video.removeEventListener("pause", onVideoPause);
     state.button.remove();
+    state.panel.remove();
     states.delete(state);
   }
 
-  function refreshAllButtons() {
+  function refreshAllOverlays() {
     states.forEach((state) => {
       if (!document.contains(state.video)) {
         disposeState(state);
@@ -342,6 +651,7 @@
       }
 
       updateButtonPosition(state);
+      updatePanelPosition(state);
     });
   }
 
@@ -357,8 +667,34 @@
     scheduleRefresh();
   });
 
+  document.addEventListener("pointerdown", (event) => {
+    states.forEach((state) => {
+      if (!state.isPanelOpen) {
+        return;
+      }
+
+      if (state.panel.contains(event.target) || state.button.contains(event.target)) {
+        return;
+      }
+
+      closePanel(state);
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    states.forEach((state) => {
+      if (state.isPanelOpen) {
+        closePanel(state);
+      }
+    });
+  });
+
   scanVideos();
-  refreshAllButtons();
+  refreshAllOverlays();
 
   observer.observe(document.documentElement, {
     childList: true,

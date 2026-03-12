@@ -35,6 +35,10 @@
   background: rgba(180, 83, 9, 0.94);
 }
 
+.mvr-record-button[data-state="panel"] {
+  background: rgba(37, 99, 235, 0.94);
+}
+
 .mvr-record-button[data-state="recording"] {
   background: rgba(185, 28, 28, 0.94);
 }
@@ -42,4 +46,106 @@
 .mvr-record-button:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+
+.mvr-settings-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  width: 240px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.97);
+  color: #fff;
+  font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+}
+
+.mvr-settings-panel.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mvr-panel-title {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvr-panel-section {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.mvr-panel-label {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.mvr-format-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mvr-format-option.is-disabled {
+  opacity: 0.65;
+}
+
+.mvr-format-hint {
+  margin-left: auto;
+  color: rgba(148, 163, 184, 0.92);
+  font-size: 11px;
+}
+
+.mvr-filename-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.95);
+  color: #fff;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.mvr-filename-input:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.95);
+  outline-offset: 1px;
+}
+
+.mvr-panel-preview {
+  min-height: 18px;
+  margin-bottom: 12px;
+  color: rgba(148, 163, 184, 0.96);
+  word-break: break-word;
+}
+
+.mvr-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mvr-panel-button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.98);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mvr-panel-button-primary {
+  background: rgba(37, 99, 235, 0.98);
 }
