@@ -1,6 +1,6 @@
-# Minimal Video Recorder
+# VideoCaptureX
 
-Minimal Video Recorder is a lightweight Chrome extension that adds a small **Record** button to HTML5 video players on web pages. When you click the button, a small floating settings panel opens so you can choose the recording format and the download file name before recording starts. The extension then waits for the video to start playing, records the video stream directly in the browser, and downloads the recorded file automatically when the recording finishes.
+VideoCaptureX is a lightweight Chrome extension that adds a small **Record** button to HTML5 video players on web pages. When you click the button, a small floating settings panel opens so you can choose the recording format and the download file name before recording starts. The extension then waits for the video to start playing, records the video stream directly in the browser, and downloads the recorded file automatically when the recording finishes.
 
 ## Before You Start
 
@@ -45,7 +45,7 @@ This extension is installed as an unpacked extension.
    The folder should include files such as `manifest.json`, `content.js`, and `content.css`.
 6. Chrome will load the extension immediately.
 
-If the extension is loaded correctly, it will appear in your extensions list as `Minimal Video Recorder`.
+If the extension is loaded correctly, it will appear in your extensions list as `VideoCaptureX`.
 
 ## How to Use
 

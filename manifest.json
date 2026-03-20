@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Minimal Video Recorder",
+  "name": "VideoCaptureX",
   "version": "1.0.0",
   "description": "Record HTML5 video elements with captureStream and download the result.",
   "permissions": ["downloads"],
