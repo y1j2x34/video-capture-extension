@@ -33,6 +33,45 @@ If the project later provides GitHub Releases:
 2. Download the latest release source ZIP or packaged files.
 3. Extract the downloaded file to a folder on your computer.
 
+## How to Build a CRX Package
+
+`pack-crx.sh` builds a signed `.crx` file. It uses the local Chrome or Chromium
+binary to create the package, so the signature and the archive layout are
+exactly what a Chrome-based browser expects.
+
+Requirements: `bash`, Chrome or Chromium, and `openssl`.
+
+```sh
+./pack-crx.sh            # writes dist/minimal-video-recorder.crx
+./pack-crx.sh -z         # also writes a plain .zip of the same files
+./pack-crx.sh -k my.pem  # sign with a specific key
+./pack-crx.sh -o out/app.crx
+```
+
+The script copies only the files the extension needs at runtime
+(`manifest.json`, `background.js`, `content.js`, `content.css`, and `icons/`)
+into a temporary directory, signs that directory, verifies the package
+contains exactly those files, and reports the resulting extension ID.
+
+### The Signing Key
+
+Chrome derives the extension ID from the public part of the signing key. The
+first run creates `keys/extension-key.pem` and reuses it on every later run, so
+each build installs as the same extension and upgrades replace the previous
+version instead of adding a second one.
+
+Keep that file private and out of version control. Losing it means future
+builds get a new extension ID; leaking it lets someone else publish builds
+that browsers accept as this extension.
+
+### Installing the Built CRX
+
+Chrome refuses to install `.crx` files that are not distributed through the
+Chrome Web Store, so a locally built package is normally installed by loading
+the unpacked source folder instead (see the next section) or by enterprise
+policy. The `.crx` file is what you upload when publishing to the Chrome Web
+Store or hand to a system administrator for policy-based deployment.
+
 ## How to Install in Chrome
 
 This extension is installed as an unpacked extension.

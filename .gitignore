@@ -1,0 +1,6 @@
+# Signing key for pack-crx.sh: private, and it fixes the extension ID.
+# Losing it changes the ID; leaking it lets someone else sign as this extension.
+keys/
+
+# Build output.
+dist/
